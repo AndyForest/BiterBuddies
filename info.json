@@ -1,0 +1,13 @@
+{
+  "name": "Biter_Buddies",
+  "version": "1.0.1",
+  "title": "Biter Buddies",
+  "author": "Rednox",
+  "contact": "",
+  "homepage": "https://github.com/AndyForest/BiterBuddies",
+  "description": "Adds biter friends to help defend you and your factory! Press F7 to spawn new biter buddies, F8 to summon them to help you.",
+  "dependencies": [
+    "base >= 1.1.5"
+  ],
+  "factorio_version": "1.1"
+}
