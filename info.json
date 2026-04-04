@@ -1,13 +1,13 @@
 {
   "name": "Biter_Buddies",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "title": "Biter Buddies",
   "author": "Rednox",
   "contact": "",
   "homepage": "https://github.com/AndyForest/BiterBuddies",
-  "description": "Adds biter friends to help defend you and your factory! Press F7 to spawn new biter buddies, F8 to summon them to help you.",
+  "description": "Hatch your own biter and spitter buddies from throwable eggs! Craft eggs, throw them like grenades, and command your buddy squad with a whistle. F8 to whistle, F9 to spawn a sparring partner.",
   "dependencies": [
-    "base >= 1.1.5"
+    "base >= 2.0"
   ],
-  "factorio_version": "1.1"
+  "factorio_version": "2.0"
 }

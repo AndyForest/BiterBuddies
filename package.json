@@ -1,0 +1,33 @@
+{
+  "name": "biterbuddies",
+  "version": "1.0.0",
+  "description": "Hatch your own biter and spitter buddies from throwable eggs! Craft eggs, throw them like grenades, and command your buddy squad with a whistle.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "validate": "tsx scripts/validate-sprites.ts",
+    "build": "tsx scripts/validate-sprites.ts && bash build.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndyForest/BiterBuddies.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/AndyForest/BiterBuddies/issues"
+  },
+  "homepage": "https://github.com/AndyForest/BiterBuddies#readme",
+  "dependencies": {
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

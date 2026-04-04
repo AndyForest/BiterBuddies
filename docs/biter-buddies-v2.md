@@ -192,33 +192,56 @@ Before implementing, recipe check / inspect existing Biter Buddies recipes aroun
 
 Those should give you the taste and design boundaries without needing to reconstruct the whole conversation.
 
-## What I want you to recipe check next
+## Implementation status (v2.0.0 — 2026-04-04)
 
-Please recipe check before making any non-obvious choice in these areas:
+### Decisions made (recipe-checked on Soup.net)
 
-* **force model**: player force vs custom allied force vs something else
-* **spawn method**: capsule/prototype-driven vs custom script-driven throw/spawn flow
-* **whistle radius UI**: fixed default only vs a simple adjustable radius control
-* **grouping model**: temporary unit groups for pack movement vs per-unit commands only
-* **follow-target persistence**: how aggressively units resume following after combat
-* **save/load tracking**: simplest durable way to track buddies per player without fragile bookkeeping
-* **performance strategy** if large buddy counts become real
-* **sparring mechanic** for v1: keep, simplify, or defer
+* **Force model**: Player force. Simple, minimap-visible, turret-friendly. No custom force.
+* **Spawn method**: Capsule items with projectile → `on_script_trigger_effect`. Factorio handles the throw arc.
+* **Grouping model**: Temporary unit groups for pack movement on whistle.
+* **Sparring mechanic**: Kept as F9 debug hotkey. Fun and free.
+* **Spawner building**: Deferred. Eggs only for v2 launch.
+* **Save/load**: `storage.buddies[player_index]` tracks unit numbers. Unit group commands are lost on reload (matches vanilla behavior).
+* **No stdlib dependency**: Dropped in favor of native Factorio 2.0 `script.on_event`.
 
-When you need Andy or Rory to choose between design directions, do **not** ask ordinary open-ended questions first. Present the tradeoff as **binary recipe checks** unless you only need a factual clarification.
+* **Multiplayer whistle ownership**: Per-player. Each player commands only their own hatched buddies.
+* **Global recall**: Alt-click with whistle recalls ALL player's buddies from anywhere on the surface.
+* **Whistle tool**: Selection tool item (Buddy Whistle) with toolbar shortcut button. Replaces F8 hotkey. Left-click = command buddies to area. Alt-click = global recall. Unlocked with first tech.
 
-## Deliverables I want from you
+### Open decisions (need Andy/Rory input via Soup.net recipe checks)
 
-Please produce, in order:
+* **Whistle radius UI**: Should the selection area have any maximum range, or is unlimited fine?
+* **Performance strategy**: No cap, no throttling. Fine until someone has 500 buddies.
 
-1. a concise implementation plan
-2. a list of relevant files in the current mod
-3. the most promising technical approach for thrown eggs + buddy tracking
-4. any risky API assumptions you want to verify first
-5. a minimal v1 patch plan
-6. then start implementing
+### What recipe checks are still needed
 
-## My creative coaching note
+Before next iteration, recipe check:
+
+* **Egg art / projectile visuals** — currently using acid-projectile placeholder sprites
+* **Recipe balance** — ingredient costs may need tuning after playtesting
+
+### File structure
+
+```
+data.lua        — Prototypes: buddy entities, egg capsules, projectiles, recipes, technologies, hotkeys
+control.lua     — Runtime: egg hatching, buddy tracking, whistle commands, sparring, remote test interface
+info.json       — Mod metadata (v2.0.0, Factorio 2.0)
+locale/en/      — English locale strings for all items, entities, recipes, technologies
+build.sh        — Packages mod into distributable zip
+docs/           — This design brief
+```
+
+### Testing interface
+
+In-game console commands via remote interface:
+```
+/c remote.call(“biter_buddies”, “give_eggs”)     -- 10 of each egg type
+/c remote.call(“biter_buddies”, “unlock_all”)     -- unlock all technologies
+/c remote.call(“biter_buddies”, “status”)         -- show buddy tracking state
+/c remote.call(“biter_buddies”, “count_all”)      -- count all buddies on surface
+```
+
+### Creative coaching note
 
 Protect the mod’s weird joy.
 
@@ -232,9 +255,9 @@ then it is probably the wrong choice unless it solves a truly serious problem.
 
 The best version of this mod will feel like “of course this is silly,” not “of course this is architecturally pure.”
 
-[1]: https://wiki.factorio.com/Metallurgic_science_pack?utm_source=chatgpt.com "Metallurgic science pack - Factorio Wiki"
-[2]: https://lua-api.factorio.com/?utm_source=chatgpt.com "API Docs | Factorio"
-[3]: https://lua-api.factorio.com/latest/concepts/Command.html "Command - Runtime Docs | Factorio"
-[4]: https://lua-api.factorio.com/latest/classes/LuaSurface.html?utm_source=chatgpt.com "LuaSurface - Runtime Docs"
-[5]: https://lua-api.factorio.com/latest/events.html "Events - Runtime Docs | Factorio"
-[6]: https://lua-api.factorio.com/latest/classes/LuaForce.html?utm_source=chatgpt.com "LuaForce - Runtime Docs"
+[1]: https://wiki.factorio.com/Metallurgic_science_pack?utm_source=chatgpt.com “Metallurgic science pack - Factorio Wiki”
+[2]: https://lua-api.factorio.com/?utm_source=chatgpt.com “API Docs | Factorio”
+[3]: https://lua-api.factorio.com/latest/concepts/Command.html “Command - Runtime Docs | Factorio”
+[4]: https://lua-api.factorio.com/latest/classes/LuaSurface.html?utm_source=chatgpt.com “LuaSurface - Runtime Docs”
+[5]: https://lua-api.factorio.com/latest/events.html “Events - Runtime Docs | Factorio”
+[6]: https://lua-api.factorio.com/latest/classes/LuaForce.html?utm_source=chatgpt.com “LuaForce - Runtime Docs”

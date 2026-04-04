@@ -38,3 +38,24 @@ luac.out
 *.x86_64
 *.hex
 
+# Claude Code / MCP config (contains API keys)
+.claude/
+.mcp.json
+
+# Environment (contains local paths)
+.env
+!.env.example
+
+# WIP notes and scratch files
+WIP/
+test.lua
+
+# Windows desktop.ini
+desktop.ini
+
+# Node
+node_modules/
+
+# Build artifacts
+dist/
+*.zip
