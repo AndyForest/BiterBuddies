@@ -7,7 +7,7 @@ A Factorio 2.0 mod by Andy and Rory. When I started playing Factorio with my son
 ## Features
 
 - **Throwable eggs** — craft biter and spitter eggs, throw them like grenades. Buddies hatch instantly on impact.
-- **Buddy Whistle** — a selection tool for commanding your squad. Left-click to send buddies to a location. Alt-click to recall ALL buddies from anywhere on the map.
+- **Buddy Whistle** — a selection tool for commanding your squad, like the spidertron remote. Select buddies, then right-click to send them.
 - **Toolbar shortcut** — one-click access to equip your whistle.
 - **Science-gated progression** — unlock bigger buddies as you advance:
   - Red science: Small Biter Egg
@@ -51,8 +51,11 @@ This packages only the required mod files into `dist/Biter_Buddies_<version>.zip
 2. Craft eggs
 3. Throw eggs to hatch buddies at the landing spot
 4. Equip the Buddy Whistle (or click the toolbar shortcut) and:
-   - **Left-click/drag** on terrain to send nearby buddies there
-   - **Alt-click/drag** anywhere to recall ALL your buddies to you
+   - **Left-click/drag** to select which buddies to command
+   - **Shift+Left-click/drag** to add to your selection
+   - **Ctrl+click** a buddy to remove it from your selection
+   - **Right-click** to send selected buddies to that location (if none selected, sends all)
+   - **Shift+Right-click** to queue a move command
 5. Press **F9** to spawn a sparring partner
 
 ### Console commands for testing

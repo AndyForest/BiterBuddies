@@ -307,15 +307,30 @@ data:extend{
     order = "c[automated-construction]-d[buddy-whistle]",
     stack_size = 1,
     flags = {"spawnable", "only-in-cursor", "not-stackable"},
+    -- Left-click: select buddies (replace selection)
     select = {
       border_color = {r = 0.2, g = 0.8, b = 0.2},
       cursor_box_type = "entity",
       mode = {"any-entity", "same-force"},
       entity_filters = buddy_entity_names,
     },
+    -- Shift+Left-click: add to selected buddies
     alt_select = {
-      border_color = {r = 0.2, g = 0.4, b = 1.0},
+      border_color = {r = 0.2, g = 0.8, b = 0.2},
       cursor_box_type = "entity",
+      mode = {"any-entity", "same-force"},
+      entity_filters = buddy_entity_names,
+    },
+    -- Right-click: send selected buddies to location
+    reverse_select = {
+      border_color = {r = 1.0, g = 0.5, b = 0.0},
+      cursor_box_type = "not-allowed",
+      mode = {"nothing"},
+    },
+    -- Shift+Right-click: recall all buddies
+    alt_reverse_select = {
+      border_color = {r = 0.2, g = 0.4, b = 1.0},
+      cursor_box_type = "not-allowed",
       mode = {"nothing"},
     },
   },
@@ -336,7 +351,7 @@ data:extend{
 }
 
 ------------------------------------------------------------------------
--- HOTKEYS (sparring only)
+-- HOTKEYS
 ------------------------------------------------------------------------
 
 data:extend{
@@ -344,6 +359,12 @@ data:extend{
     type = "custom-input",
     name = "spawn_biter_enemy_buddy_hotkey",
     key_sequence = "F9",
+    consuming = "none",
+  },
+  {
+    type = "custom-input",
+    name = "buddy_whistle_deselect",
+    key_sequence = "CONTROL + mouse-button-1",
     consuming = "none",
   },
 }

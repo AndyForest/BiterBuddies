@@ -198,37 +198,53 @@ Those should give you the taste and design boundaries without needing to reconst
 
 * **Force model**: Player force. Simple, minimap-visible, turret-friendly. No custom force.
 * **Spawn method**: Capsule items with projectile → `on_script_trigger_effect`. Factorio handles the throw arc.
-* **Grouping model**: Temporary unit groups for pack movement on whistle.
+* **Grouping model**: Currently throwaway unit groups per command. **Planned refactor to persistent unit groups** — units stay in their group across commands, enabling real waypoint queuing and RTS-style control groups. Units can only be in one group (like StarCraft). Groups don't survive save/load.
 * **Sparring mechanic**: Kept as F9 debug hotkey. Fun and free.
 * **Spawner building**: Deferred. Eggs only for v2 launch.
 * **Save/load**: `storage.buddies[player_index]` tracks unit numbers. Unit group commands are lost on reload (matches vanilla behavior).
 * **No stdlib dependency**: Dropped in favor of native Factorio 2.0 `script.on_event`.
-
 * **Multiplayer whistle ownership**: Per-player. Each player commands only their own hatched buddies.
-* **Global recall**: Alt-click with whistle recalls ALL player's buddies from anywhere on the surface.
-* **Whistle tool**: Selection tool item (Buddy Whistle) with toolbar shortcut button. Replaces F8 hotkey. Left-click = command buddies to area. Alt-click = global recall. Unlocked with first tech.
+* **Whistle tool**: Selection tool item (Buddy Whistle) with toolbar shortcut button. Spidertron-remote-style two-phase controls:
+  * Left-click drag: select buddies (replace selection)
+  * Shift+Left-click drag: add to selection
+  * Ctrl+click: remove buddy from selection
+  * Right-click: send selected buddies (or all if none selected)
+  * Shift+Right-click: queue move command
 
-### Open decisions (need Andy/Rory input via Soup.net recipe checks)
+### Planned: persistent unit group refactor
 
-* **Whistle radius UI**: Should the selection area have any maximum range, or is unlimited fine?
+The current implementation creates throwaway unit groups on every command. This should be refactored to **persistent unit groups per player** to enable:
+* Real waypoint queuing via compound sequential commands
+* Proper pack movement that persists between commands
+* Multiple whistle items as saved control groups (like StarCraft)
+* Less engine overhead from constant group creation/destruction
+
+Key API facts (see `docs/factorio-api-reference.md`):
+* `parent_group` — units can only be in one group at a time
+* `add_member()` — auto-removes from old group
+* `unique_id` — persistent group identification
+* Groups don't survive save/load — must rebuild from tracking data
+
+### Open decisions
+
 * **Performance strategy**: No cap, no throttling. Fine until someone has 500 buddies.
 
 ### What recipe checks are still needed
 
-Before next iteration, recipe check:
-
-* **Egg art / projectile visuals** — currently using acid-projectile placeholder sprites
+* **Egg art / projectile visuals** — currently using acid-projectile placeholder sprites (scaled to 0.33)
 * **Recipe balance** — ingredient costs may need tuning after playtesting
 
 ### File structure
 
 ```
-data.lua        — Prototypes: buddy entities, egg capsules, projectiles, recipes, technologies, hotkeys
-control.lua     — Runtime: egg hatching, buddy tracking, whistle commands, sparring, remote test interface
-info.json       — Mod metadata (v2.0.0, Factorio 2.0)
-locale/en/      — English locale strings for all items, entities, recipes, technologies
-build.sh        — Packages mod into distributable zip
-docs/           — This design brief
+data.lua                      — Prototypes: buddy entities, egg capsules, projectiles, recipes, technologies, hotkeys
+control.lua                   — Runtime: egg hatching, buddy tracking, whistle commands, sparring, test interface
+info.json                     — Mod metadata (v2.0.0, Factorio 2.0)
+locale/en/biter-buddies.cfg   — English locale strings
+build.sh                      — Packages mod into distributable zip
+scripts/validate-sprites.ts   — Validates sprite/icon references against actual Factorio assets
+docs/biter-buddies-v2.md      — This design brief
+docs/factorio-api-reference.md — Key Factorio 2.0 API findings with reference links
 ```
 
 ### Testing interface
