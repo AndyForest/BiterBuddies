@@ -81,6 +81,11 @@ Key API findings for this mod. Version 2.0.76. Verify links when Factorio update
 - `entity.type == "character"` then `entity.player` — returns `LuaPlayer` or nil
 - Do NOT use `is_player()` — that's on `LuaControl`, not `LuaEntity`
 
+### Locale gotcha: trailing numbers in prototype names
+- Factorio's locale system interprets `tech-name-1` as tech `tech-name` with parameter `1`
+- The tooltip shows `Unknown key: "technology-name.tech-name" 1` — note the space before the number
+- **Fix**: avoid trailing bare numbers in prototype names. Use descriptive suffixes instead (e.g. `biter-buddies-small-biter` not `biter-buddies-1`)
+
 ### Unit prototypes (1.1 → 2.0 changes)
 - `pollution_to_join_attack` → `absorptions_to_join_attack = {pollution = N}`
 - `global` → `storage` for mod persistent data
@@ -88,6 +93,16 @@ Key API findings for this mod. Version 2.0.76. Verify links when Factorio update
 ### Event filters
 - `on_entity_died` supports name filters: `{filter = "name", name = "entity-name"}`
 - Filters let the engine skip the Lua callback entirely for non-matching entities
+
+## Item Stacks
+
+### LuaItemStack
+- [LuaItemStack docs](https://lua-api.factorio.com/latest/classes/LuaItemStack.html)
+- `item_number` — uint64, unique per item instance (read-only, may be nil for some items)
+- `get_tag(name)` / `set_tag(name, value)` / `remove_tag(name)` — persistent key-value storage on the item
+- `tags` — full Tags table (read/write)
+- Tags persist on the item across save/load
+- Can store group `unique_id` on a whistle item to link it to its persistent unit group
 
 ## Custom Inputs
 - [CustomInputPrototype docs](https://lua-api.factorio.com/latest/prototypes/CustomInputPrototype.html)

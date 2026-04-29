@@ -5,9 +5,10 @@
   "author": "Rednox",
   "contact": "",
   "homepage": "https://github.com/AndyForest/BiterBuddies",
-  "description": "Hatch your own biter and spitter buddies from throwable eggs! Craft eggs, throw them like grenades, and command your buddy squad with a whistle. F8 to whistle, F9 to spawn a sparring partner.",
+  "description": "Command your loyal posse! Hatch biter and spitter buddies from throwable eggs, then lead a posse that follows you on patrol, defends the base, and charges in on your whistle. Bigger buddies unlock as you advance through the tech tree.",
   "dependencies": [
-    "base >= 2.0"
+    "base >= 2.0",
+    "? space-age"
   ],
   "factorio_version": "2.0"
 }

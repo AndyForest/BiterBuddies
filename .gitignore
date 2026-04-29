@@ -59,3 +59,4 @@ node_modules/
 # Build artifacts
 dist/
 *.zip
+mcp_config.json

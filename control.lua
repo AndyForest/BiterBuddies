@@ -9,7 +9,6 @@ local BUDDY_NAMES = {
   "small-spitter-buddy", "medium-spitter-buddy", "big-spitter-buddy", "behemoth-spitter-buddy",
 }
 
--- Derived from BUDDY_NAMES: trigger effect_id -> buddy entity name
 local TRIGGER_TO_BUDDY = {}
 local BUDDY_NAME_SET = {}
 local ENTITY_DIED_FILTERS = {}
@@ -22,13 +21,15 @@ end
 local WHISTLE_DESTINATION_RADIUS = 5
 
 ------------------------------------------------------------------------
--- STORAGE INITIALIZATION
+-- STORAGE
 ------------------------------------------------------------------------
 
 local function init_storage()
   storage.buddies = storage.buddies or {}       -- [player_index] = { [unit_number] = true }
-  storage.buddy_owners = storage.buddy_owners or {}  -- [unit_number] = player_index (reverse lookup)
-  storage.selected = storage.selected or {}     -- [player_index] = { [unit_number] = true } (current whistle selection)
+  storage.buddy_owners = storage.buddy_owners or {}  -- [unit_number] = player_index
+  storage.groups = storage.groups or {}         -- [group_id] = LuaCommandable
+  -- Remove legacy storage
+  storage.selected = nil
 end
 
 script.on_init(function()
@@ -37,7 +38,7 @@ end)
 
 script.on_configuration_changed(function()
   init_storage()
-  -- Rebuild reverse map if upgrading from a version that didn't have it
+  -- Rebuild reverse map if upgrading
   if not next(storage.buddy_owners) then
     for player_index, buddies in pairs(storage.buddies) do
       for unit_number, _ in pairs(buddies) do
@@ -45,6 +46,8 @@ script.on_configuration_changed(function()
       end
     end
   end
+  -- Groups don't survive save/load — clear stale references
+  storage.groups = {}
 end)
 
 ------------------------------------------------------------------------
@@ -61,13 +64,8 @@ end
 
 local function untrack_buddy(unit_number)
   local player_index = storage.buddy_owners[unit_number]
-  if player_index then
-    if storage.buddies[player_index] then
-      storage.buddies[player_index][unit_number] = nil
-    end
-    if storage.selected[player_index] then
-      storage.selected[player_index][unit_number] = nil
-    end
+  if player_index and storage.buddies[player_index] then
+    storage.buddies[player_index][unit_number] = nil
   end
   storage.buddy_owners[unit_number] = nil
 end
@@ -104,7 +102,72 @@ local function filter_player_buddies(player, entities)
 end
 
 ------------------------------------------------------------------------
--- EGG HATCHING (capsule impact -> buddy spawn)
+-- PERSISTENT GROUP MANAGEMENT
+------------------------------------------------------------------------
+
+-- Get the persistent group for a whistle item, or create one
+local function get_or_create_group(player, whistle_stack)
+  local group_id = whistle_stack:get_tag("group_id")
+
+  -- Check if existing group is still valid
+  if group_id then
+    local group = storage.groups[group_id]
+    if group and group.valid then
+      return group
+    end
+    -- Stale reference — clean up
+    storage.groups[group_id] = nil
+  end
+
+  -- Create a new group for this whistle
+  local group = player.surface.create_unit_group{
+    position = player.position,
+    force = player.force,
+  }
+  local id = group.unique_id
+  storage.groups[id] = group
+  whistle_stack:set_tag("group_id", id)
+  return group
+end
+
+-- Get the group for the whistle currently in the player's cursor
+local function get_cursor_whistle_group(player)
+  local cursor = player.cursor_stack
+  if not cursor or not cursor.valid_for_read or cursor.name ~= "buddy-whistle" then
+    return nil, nil
+  end
+  return get_or_create_group(player, cursor), cursor
+end
+
+-- Get valid members of a group
+local function get_group_members(group)
+  if not group or not group.valid then return {} end
+  local members = group.commandable_members
+  local result = {}
+  for _, member in ipairs(members) do
+    if member.valid then
+      result[#result + 1] = member
+    end
+  end
+  return result
+end
+
+-- Release all members from a group (give them wander command to detach)
+local function clear_group(group)
+  if not group or not group.valid then return end
+  local members = group.commandable_members
+  for _, member in ipairs(members) do
+    if member.valid then
+      member.set_command({
+        type = defines.command.wander,
+        distraction = defines.distraction.by_enemy,
+      })
+    end
+  end
+end
+
+------------------------------------------------------------------------
+-- EGG HATCHING
 ------------------------------------------------------------------------
 
 script.on_event(defines.events.on_script_trigger_effect, function(event)
@@ -143,10 +206,10 @@ end)
 -- BUDDY CLEANUP
 ------------------------------------------------------------------------
 
--- Engine-filtered: only fires for buddy entity deaths
 script.on_event(defines.events.on_entity_died, function(event)
   if event.entity and event.entity.valid then
     untrack_buddy(event.entity.unit_number)
+    -- Engine automatically removes dead unit from its group
   end
 end, ENTITY_DIED_FILTERS)
 
@@ -158,63 +221,11 @@ script.on_event(defines.events.on_player_removed, function(event)
     end
   end
   storage.buddies[event.player_index] = nil
-  storage.selected[event.player_index] = nil
 end)
 
 ------------------------------------------------------------------------
--- WHISTLE COMMAND (two-phase: select, then send)
+-- WHISTLE COMMANDS (persistent groups)
 ------------------------------------------------------------------------
-
-local function command_buddies(player, buddies, target_pos, target_entity)
-  if #buddies == 0 then return end
-
-  local group = player.surface.create_unit_group{
-    position = buddies[1].position,
-    force = player.force,
-  }
-  for _, buddy in ipairs(buddies) do
-    if buddy.valid then
-      group.add_member(buddy)
-    end
-  end
-
-  if target_entity and target_entity.valid then
-    group.set_command({
-      type = defines.command.go_to_location,
-      destination_entity = target_entity,
-      distraction = defines.distraction.by_enemy,
-      radius = WHISTLE_DESTINATION_RADIUS,
-    })
-  elseif target_pos then
-    group.set_command({
-      type = defines.command.go_to_location,
-      destination = target_pos,
-      distraction = defines.distraction.by_enemy,
-      radius = WHISTLE_DESTINATION_RADIUS,
-    })
-  end
-end
-
--- Resolve the active buddy group: selected set if any, else all buddies on surface
-local function get_active_buddies(player)
-  local selected = storage.selected[player.index]
-  if selected and next(selected) then
-    -- Return only the selected buddies that are still alive
-    local entities = player.surface.find_entities_filtered{
-      name = BUDDY_NAMES,
-      force = player.force,
-    }
-    local result = {}
-    for _, entity in ipairs(entities) do
-      if entity.valid and selected[entity.unit_number] then
-        result[#result + 1] = entity
-      end
-    end
-    if #result > 0 then return result end
-    -- Selection went stale (all died) — fall through to all buddies
-  end
-  return get_all_player_buddies(player)
-end
 
 local function area_center(area)
   return {
@@ -223,19 +234,57 @@ local function area_center(area)
   }
 end
 
--- Left-click: select buddies
+local function find_target_entity(player, position)
+  local center_entities = player.surface.find_entities_filtered{
+    position = position,
+    radius = 2,
+    force = {"enemy", "neutral"},
+  }
+  if #center_entities > 0 then
+    return center_entities[1]
+  end
+  return nil
+end
+
+local function make_go_command(target_pos, target_entity)
+  if target_entity and target_entity.valid then
+    return {
+      type = defines.command.go_to_location,
+      destination_entity = target_entity,
+      distraction = defines.distraction.by_enemy,
+      radius = WHISTLE_DESTINATION_RADIUS,
+    }
+  else
+    return {
+      type = defines.command.go_to_location,
+      destination = target_pos,
+      distraction = defines.distraction.by_enemy,
+      radius = WHISTLE_DESTINATION_RADIUS,
+    }
+  end
+end
+
+-- Left-click: select buddies (replace group membership)
 script.on_event(defines.events.on_player_selected_area, function(event)
   if event.item ~= "buddy-whistle" then return end
 
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
+  local group, whistle = get_cursor_whistle_group(player)
+  if not group then return end
+
   local my_buddies = filter_player_buddies(player, event.entities)
-  local selected = {}
+
+  -- Clear existing members
+  clear_group(group)
+
+  -- Add new selection
   for _, buddy in ipairs(my_buddies) do
-    selected[buddy.unit_number] = true
+    if buddy.valid then
+      group.add_member(buddy)
+    end
   end
-  storage.selected[player.index] = selected
 
   if #my_buddies > 0 then
     player.print("Selected " .. #my_buddies .. " buddies.")
@@ -244,29 +293,30 @@ script.on_event(defines.events.on_player_selected_area, function(event)
   end
 end)
 
--- Shift+Left-click: add to selected buddies
+-- Shift+Left-click: add to group
 script.on_event(defines.events.on_player_alt_selected_area, function(event)
   if event.item ~= "buddy-whistle" then return end
 
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
+  local group = get_cursor_whistle_group(player)
+  if not group then return end
+
   local my_buddies = filter_player_buddies(player, event.entities)
   if #my_buddies == 0 then return end
 
-  local selected = storage.selected[player.index] or {}
   for _, buddy in ipairs(my_buddies) do
-    selected[buddy.unit_number] = true
+    if buddy.valid then
+      group.add_member(buddy)
+    end
   end
-  storage.selected[player.index] = selected
 
-  -- Count total selected
-  local count = 0
-  for _ in pairs(selected) do count = count + 1 end
+  local count = #get_group_members(group)
   player.print("Selected " .. count .. " buddies.")
 end)
 
--- Right-click: send selected (or all) buddies to target
+-- Right-click: send group to target
 script.on_event(defines.events.on_player_reverse_selected_area, function(event)
   if event.item ~= "buddy-whistle" then return end
 
@@ -274,121 +324,87 @@ script.on_event(defines.events.on_player_reverse_selected_area, function(event)
   if not player or not player.valid then return end
 
   local target_pos = area_center(event.area)
+  local target_entity = find_target_entity(player, target_pos)
 
-  -- Check for enemy/neutral entity near target for follow behavior
-  local target_entity = nil
-  local center_entities = player.surface.find_entities_filtered{
-    position = target_pos,
-    radius = 2,
-    force = {"enemy", "neutral"},
-  }
-  if #center_entities > 0 then
-    target_entity = center_entities[1]
+  local group = get_cursor_whistle_group(player)
+  if not group then return end
+
+  local members = get_group_members(group)
+
+  if #members > 0 then
+    -- Send the persistent group
+    group.set_command(make_go_command(target_pos, target_entity))
+  else
+    -- No selection — send all buddies via a temporary group
+    local all_buddies = get_all_player_buddies(player)
+    if #all_buddies == 0 then
+      player.print("No buddies to command!")
+      return
+    end
+    local temp_group = player.surface.create_unit_group{
+      position = all_buddies[1].position,
+      force = player.force,
+    }
+    for _, buddy in ipairs(all_buddies) do
+      if buddy.valid then
+        temp_group.add_member(buddy)
+      end
+    end
+    temp_group.set_command(make_go_command(target_pos, target_entity))
   end
-
-  local buddies = get_active_buddies(player)
-  if #buddies == 0 then
-    player.print("No buddies to command!")
-    return
-  end
-
-  command_buddies(player, buddies, target_pos, target_entity)
 end)
 
--- Shift+Right-click: queue move command (adds waypoint after current command)
+-- Shift+Right-click: queue waypoint on persistent group
 script.on_event(defines.events.on_player_alt_reverse_selected_area, function(event)
   if event.item ~= "buddy-whistle" then return end
 
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
-  local target_pos = area_center(event.area)
+  local group = get_cursor_whistle_group(player)
+  if not group then return end
 
-  local buddies = get_active_buddies(player)
-  if #buddies == 0 then
-    player.print("No buddies to command!")
+  local members = get_group_members(group)
+  if #members == 0 then
+    player.print("No buddies selected to queue command for!")
     return
   end
 
-  -- Build a compound command: current movement + new waypoint
-  local group = player.surface.create_unit_group{
-    position = buddies[1].position,
-    force = player.force,
-  }
-  for _, buddy in ipairs(buddies) do
-    if buddy.valid then
-      group.add_member(buddy)
-    end
-  end
+  local target_pos = area_center(event.area)
+  local target_entity = find_target_entity(player, target_pos)
+  local waypoint = make_go_command(target_pos, target_entity)
 
-  -- Check for entity at target for follow
-  local target_entity = nil
-  local center_entities = player.surface.find_entities_filtered{
-    position = target_pos,
-    radius = 2,
-    force = {"enemy", "neutral"},
-  }
-  if #center_entities > 0 then
-    target_entity = center_entities[1]
-  end
-
-  local waypoint_cmd
-  if target_entity and target_entity.valid then
-    waypoint_cmd = {
-      type = defines.command.go_to_location,
-      destination_entity = target_entity,
-      distraction = defines.distraction.by_enemy,
-      radius = WHISTLE_DESTINATION_RADIUS,
-    }
-  else
-    waypoint_cmd = {
-      type = defines.command.go_to_location,
-      destination = target_pos,
-      distraction = defines.distraction.by_enemy,
-      radius = WHISTLE_DESTINATION_RADIUS,
-    }
-  end
-
-  -- Use compound command to queue after any existing movement
+  -- Queue: compound command chains current position → new waypoint
   group.set_command({
     type = defines.command.compound,
     structure_type = defines.compound_command.return_last,
     commands = {
-      -- First: go to current position (essentially "finish what you're doing")
-      {
-        type = defines.command.go_to_location,
-        destination = buddies[1].position,
-        distraction = defines.distraction.by_enemy,
-        radius = WHISTLE_DESTINATION_RADIUS,
-      },
-      -- Then: go to the new waypoint
-      waypoint_cmd,
+      make_go_command(members[1].position, nil),
+      waypoint,
     },
   })
 end)
 
--- Ctrl+click: remove entity under cursor from selection
+-- Ctrl+click: remove buddy under cursor from group
 script.on_event("buddy_whistle_deselect", function(event)
   local player = game.players[event.player_index]
   if not player or not player.valid then return end
 
-  -- Only works when holding the buddy whistle
-  local cursor = player.cursor_stack
-  if not cursor or not cursor.valid_for_read or cursor.name ~= "buddy-whistle" then return end
+  local group = get_cursor_whistle_group(player)
+  if not group then return end
 
-  local selected_entity = player.selected
-  if not selected_entity or not selected_entity.valid then return end
-  if not BUDDY_NAME_SET[selected_entity.name] then return end
+  local target = player.selected
+  if not target or not target.valid then return end
+  if not BUDDY_NAME_SET[target.name] then return end
 
-  local selection = storage.selected[player.index]
-  if not selection then return end
+  -- Remove by giving the unit a wander command (detaches from group)
+  target.set_command({
+    type = defines.command.wander,
+    distraction = defines.distraction.by_enemy,
+  })
 
-  if selection[selected_entity.unit_number] then
-    selection[selected_entity.unit_number] = nil
-    local count = 0
-    for _ in pairs(selection) do count = count + 1 end
-    player.print("Removed from selection. " .. count .. " buddies selected.")
-  end
+  local count = #get_group_members(group)
+  player.print("Removed from selection. " .. count .. " buddies selected.")
 end)
 
 ------------------------------------------------------------------------

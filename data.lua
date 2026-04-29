@@ -159,7 +159,7 @@ data:extend{
   -- Red science: Small Biter Egg
   {
     type = "technology",
-    name = "biter-buddies-1",
+    name = "biter-buddies-small-biter",
     icon = "__base__/graphics/icons/small-biter.png",
     icon_size = 64,
     effects = {
@@ -176,13 +176,13 @@ data:extend{
   -- Green science: Small Spitter Egg
   {
     type = "technology",
-    name = "biter-buddies-2",
+    name = "biter-buddies-small-spitter",
     icon = "__base__/graphics/icons/small-spitter.png",
     icon_size = 64,
     effects = {
       {type = "unlock-recipe", recipe = "small-spitter-egg"},
     },
-    prerequisites = {"biter-buddies-1", "logistic-science-pack"},
+    prerequisites = {"biter-buddies-small-biter", "logistic-science-pack"},
     unit = {
       count = 50,
       ingredients = {
@@ -196,14 +196,14 @@ data:extend{
   -- Military science: Medium Biter + Medium Spitter Eggs
   {
     type = "technology",
-    name = "biter-buddies-3",
+    name = "biter-buddies-medium",
     icon = "__base__/graphics/icons/medium-biter.png",
     icon_size = 64,
     effects = {
       {type = "unlock-recipe", recipe = "medium-biter-egg"},
       {type = "unlock-recipe", recipe = "medium-spitter-egg"},
     },
-    prerequisites = {"biter-buddies-2", "military-science-pack"},
+    prerequisites = {"biter-buddies-small-spitter", "military-science-pack"},
     unit = {
       count = 100,
       ingredients = {
@@ -218,14 +218,14 @@ data:extend{
   -- Space science: Big Biter + Big Spitter Eggs
   {
     type = "technology",
-    name = "biter-buddies-4",
+    name = "biter-buddies-big",
     icon = "__base__/graphics/icons/big-biter.png",
     icon_size = 64,
     effects = {
       {type = "unlock-recipe", recipe = "big-biter-egg"},
       {type = "unlock-recipe", recipe = "big-spitter-egg"},
     },
-    prerequisites = {"biter-buddies-3", "space-science-pack"},
+    prerequisites = {"biter-buddies-medium", "space-science-pack"},
     unit = {
       count = 200,
       ingredients = {
@@ -241,13 +241,13 @@ data:extend{
   -- Metallurgic science (Vulcanus): Behemoth Biter Egg
   {
     type = "technology",
-    name = "biter-buddies-5",
+    name = "biter-buddies-behemoth-biter",
     icon = "__base__/graphics/icons/behemoth-biter.png",
     icon_size = 64,
     effects = {
       {type = "unlock-recipe", recipe = "behemoth-biter-egg"},
     },
-    prerequisites = {"biter-buddies-4", "metallurgic-science-pack"},
+    prerequisites = {"biter-buddies-big", "metallurgic-science-pack"},
     unit = {
       count = 500,
       ingredients = {
@@ -264,13 +264,13 @@ data:extend{
   -- Agricultural science (Gleba): Behemoth Spitter Egg
   {
     type = "technology",
-    name = "biter-buddies-6",
+    name = "biter-buddies-behemoth-spitter",
     icon = "__base__/graphics/icons/behemoth-spitter.png",
     icon_size = 64,
     effects = {
       {type = "unlock-recipe", recipe = "behemoth-spitter-egg"},
     },
-    prerequisites = {"biter-buddies-4", "agricultural-science-pack"},
+    prerequisites = {"biter-buddies-big", "agricultural-science-pack"},
     unit = {
       count = 500,
       ingredients = {
